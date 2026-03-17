@@ -2,6 +2,7 @@
 def main():
     # 在终端打印输出 "hello Jesse"
     print("hello Jesse")
+    print("hello Josie")
 
 
 # 当这个文件被直接运行时（而不是被其他文件导入时），才执行下面的代码
