@@ -1,0 +1,110 @@
+稳定婚姻问题（Stable Marriage Problem, SMP）详解
+1. 核心定义（通俗化解释）
+稳定婚姻问题本质是：两个规模相等的异性群体（如男性集合 M、女性集合 W），每个人都对另一群体的所有人有明确的好感度排序，需要找到一种 “一对一匹配”，使得不存在任何一对非匹配的男女（阻塞对 /blocking-pair），双方都更愿意抛弃当前匹配对象而选择彼此。
+你提到的 “阻塞对（blocking-pair）” 是判断匹配是否稳定的核心，用更通俗的话拆解三个条件：
+条件 1：男生 m 当前的伴侣不是女生 w，女生 w 当前的伴侣也不是男生 m；
+条件 2：对 m 来说，w 比自己现在的伴侣 “更心仪”；
+条件 3：对 w 来说，m 也比自己现在的伴侣 “更心仪”。
+只要存在这样的一对，匹配就是不稳定的；反之，若所有可能的非匹配对都不满足这三个条件，匹配就是稳定的。
+2. 经典示例（帮你理解）
+假设只有 2 个男生（m1、m2）和 2 个女生（w1、w2），他们的好感排序如下：
+男生排序：
+m1：w1 > w2（m1 更喜欢 w1，其次是 w2）
+m2：w2 > w1（m2 更喜欢 w2，其次是 w1）
+女生排序：
+w1：m1 > m2（w1 更喜欢 m1，其次是 m2）
+w2：m2 > m1（w2 更喜欢 m2，其次是 m1）
+稳定匹配：m1-w1、m2-w2（无阻塞对，双方都和自己最心仪的人匹配）；
+不稳定匹配：m1-w2、m2-w1（存在阻塞对 m1-w1：m1 更喜欢 w1 而非 w2，w1 更喜欢 m1 而非 m2，满足三个条件，因此匹配不稳定）。
+3. 经典解法：Gale-Shapley 算法（GS 算法）
+这是解决稳定婚姻问题的核心算法，也是最常用的 “求婚 - 拒绝” 算法，步骤如下（以 “男生主动求婚” 为例）：
+初始化：所有男生、女生均为 “未匹配” 状态；
+循环：
+每个未匹配的男生 m，向自己好感列表中尚未求过婚的最高优先级女生 w 求婚；
+女生 w 的反应：
+若 w 未匹配：接受求婚，m 和 w 匹配；
+若 w 已匹配（当前伴侣为 m'）：
+若 w 更喜欢 m 而非 m'：拒绝 m'，和 m 匹配（m' 变回未匹配）；
+若 w 更喜欢 m' 而非 m：拒绝 m（m 继续向列表中下一个女生求婚）；
+终止：所有男生都匹配成功，此时的匹配是稳定的。
+4. 代码实现（Python）
+python
+运行
+def stable_marriage(men_preferences, women_preferences):
+    """
+    解决稳定婚姻问题（男生主动求婚的Gale-Shapley算法）
+    
+    参数：
+        men_preferences: 字典，键为男生ID，值为女生ID列表（按好感度从高到低）
+        women_preferences: 字典，键为女生ID，值为男生ID列表（按好感度从高到低）
+    
+    返回：
+        字典：键为男生ID，值为匹配的女生ID（稳定匹配结果）
+    """
+    # 预处理：将女生的偏好列表转为字典（男生->优先级），方便快速比较
+    women_ranking = {}
+    for woman, prefs in women_preferences.items():
+        women_ranking[woman] = {man: idx for idx, man in enumerate(prefs)}
+    
+    # 初始化：所有男生未匹配，所有女生的当前伴侣为None
+    free_men = list(men_preferences.keys())  # 未匹配的男生列表
+    men_engaged = {man: None for man in men_preferences}  # 男生的匹配对象
+    women_engaged = {woman: None for woman in women_preferences}  # 女生的匹配对象
+    
+    # 记录每个男生已经向哪些女生求过婚（避免重复求婚）
+    proposal_count = {man: 0 for man in men_preferences}
+    
+    while free_men:
+        # 取出一个未匹配的男生
+        man = free_men.pop(0)
+        # 获取他还没求过婚的最高优先级女生
+        woman = men_preferences[man][proposal_count[man]]
+        proposal_count[man] += 1  # 标记已向该女生求婚
+        
+        current_partner = women_engaged[woman]
+        if current_partner is None:
+            # 女生未匹配，接受求婚
+            men_engaged[man] = woman
+            women_engaged[woman] = man
+        else:
+            # 女生已匹配，比较当前伴侣和求婚者的优先级
+            if women_ranking[woman][man] < women_ranking[woman][current_partner]:
+                # 女生更喜欢当前求婚者，更换伴侣
+                men_engaged[man] = woman
+                women_engaged[woman] = man
+                # 原伴侣变回未匹配
+                men_engaged[current_partner] = None
+                free_men.append(current_partner)
+            else:
+                # 女生拒绝求婚，男生回到未匹配列表
+                free_men.append(man)
+    
+    return men_engaged
+
+# 测试示例
+if __name__ == "__main__":
+    # 定义4个男生、4个女生的偏好列表
+    men_prefs = {
+        "m1": ["w1", "w2", "w3", "w4"],
+        "m2": ["w2", "w1", "w4", "w3"],
+        "m3": ["w3", "w4", "w1", "w2"],
+        "m4": ["w4", "w3", "w2", "w1"]
+    }
+    
+    women_prefs = {
+        "w1": ["m2", "m1", "m4", "m3"],
+        "w2": ["m1", "m2", "m3", "m4"],
+        "w3": ["m4", "m3", "m2", "m1"],
+        "w4": ["m3", "m4", "m1", "m2"]
+    }
+    
+    # 求解稳定匹配
+    stable_matches = stable_marriage(men_prefs, women_prefs)
+    print("稳定匹配结果（男生->女生）：")
+    for man, woman in stable_matches.items():
+        print(f"{man} -> {woman}")
+5. 代码说明
+预处理：将女生的偏好列表转为 “男生 - 优先级” 字典（优先级越小，好感度越高），避免每次比较都遍历列表，提升效率；
+核心循环：未匹配的男生依次向心仪女生求婚，女生根据偏好决定接受 / 拒绝，直到所有男生匹配完成；
+测试示例：运行代码会输出一组稳定匹配结果（男生主动求婚的结果对男生更有利，这是 GS 算法的特点）。
+总结
