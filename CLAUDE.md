@@ -2,6 +2,9 @@
 description: 
 alwaysApply: true
 ---
+# task
+
+这是一项非常冗长的任务，建议您充分利用完整的输出上下文来处理——整体输入和输出 tokens 控制在 200k tokens，充分利用上下文窗口长度将任务彻底完成，避免耗尽 tokens。
 
 # CLAUDE.md
 
